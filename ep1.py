@@ -43,12 +43,18 @@ class SegmentationProblem(util.Problem):
 
     def initialState(self):
         """ Metodo que implementa retorno da posicao inicial """
+        state = ()
+        self.state = state
+        #deixando o erro porque ainda ta meio marromeno
         raise NotImplementedError
 
     def actions(self, state):
         """ Metodo que implementa retorno da lista de acoes validas
         para um determinado estado
         """
+        #acoes
+        ##adiciona um espaco novo
+        ##muda a posicao de um espaco
         raise NotImplementedError
 
     def nextState(self, state, action):
@@ -61,7 +67,8 @@ class SegmentationProblem(util.Problem):
 
     def stepCost(self, state, action):
         """ Metodo que implementa funcao custo """
-        #Pega uma palavra
+        #Separa a query com os espacos do estado
+        #calcula custo de cada palavra e custo total
         raise NotImplementedError
 
 
