@@ -29,6 +29,9 @@
 
 import util
 
+addEspaco = 20
+movEspaco = 30
+
 ############################################################
 # Part 1: Segmentation problem under a unigram model
 
@@ -39,14 +42,16 @@ class SegmentationProblem(util.Problem):
 
     def isState(self, state):
         """ Metodo que implementa verificacao de estado """
-        raise NotImplementedError
+        for each in state:
+            if each > len(query) or each < 0:
+                return False
+        
+        return True
 
     def initialState(self):
         """ Metodo que implementa retorno da posicao inicial """
-        state = ()
+        state = (1)
         self.state = state
-        #deixando o erro porque ainda ta meio marromeno
-        raise NotImplementedError
 
     def actions(self, state):
         """ Metodo que implementa retorno da lista de acoes validas
@@ -59,17 +64,52 @@ class SegmentationProblem(util.Problem):
 
     def nextState(self, state, action):
         """ Metodo que implementa funcao de transicao """
-        raise NotImplementedError
+        if action == addEspaco:
+            aux = state[-1]
+            state = state + (aux+1,)
+        if action == movEspaco:
+            aux = state[-1]
+            state = state[:-1] + (aux+1,)
 
     def isGoalState(self, state):
         """ Metodo que implementa teste de meta """
-        raise NotImplementedError
+        #eh meta se dividiu em palavras que todas estao abaixo de 15
+        copiaQuery = query #copia query para versao destrutivel
+        listaPalavras = [] #lista das palavras apos divisao
+        aux = ""           #string auxiliar para guardar cada palavra
+        for i in range(len(state)):
+            j = i+1
+            aux = copiaQuery[state[-j]:]        #aux recebe a ultima palavra
+            listaPalavras.append(aux)           #essa palavra eh colocada na lista
+            copiaQuery = copiaQuery[state[-j]:] #essa palavra eh removida do fim da copia
+        
+        #listaPalavras tem todas as palavras, porem de tras para frente
+        #nao invertemos a lista aqui pois a ordem das palavras nao importa nesta etapa
+        for palavra in listaPalavras:
+            if self.unigramCost(palavra) > 15: #Se qualquer palavra nao estiver no corpus
+                return False                   #retorna False
+        #Se chegou aqui, nao retornou False
+        #Ou seja, todas as palavras estao no corpus e eh estado meta
+        return True
 
     def stepCost(self, state, action):
         """ Metodo que implementa funcao custo """
         #Separa a query com os espacos do estado
+        copiaQuery = query
+        listaPalavras = []
+        aux = ""
+        for i in range(len(state)):
+            j = i+1
+            aux = copiaQuery[state[-j]:]
+            listaPalavras.append(aux)
+            copiaQuery = copiaQuery[state[-j]:]
+        listaPalavras.reverse()
         #calcula custo de cada palavra e custo total
-        raise NotImplementedError
+        custoTotal = 0.0
+        for palavra in listaPalavras:
+            custoTotal += self.unigramCost(palavra)
+        
+        return custoTotal
 
 
 def segmentWords(query, unigramCost):
