@@ -28,6 +28,7 @@
 """
 
 import util
+import time
 
 addEspaco = 20
 movEspaco = 30
@@ -50,17 +51,23 @@ class SegmentationProblem(util.Problem):
 
     def initialState(self):
         """ Metodo que implementa retorno da posicao inicial """
-        state = (1)
+        state = (1,)
         self.state = state
+        return state
 
     def actions(self, state):
         """ Metodo que implementa retorno da lista de acoes validas
         para um determinado estado
         """
         #acoes
-        ##adiciona um espaco novo
-        ##muda a posicao de um espaco
-        raise NotImplementedError
+        acoes = []
+        if len(state) < len(self.query):
+            acoes.append(addEspaco)
+
+        if state[-1] != len(self.query):
+            acoes.append(movEspaco)
+
+        return acoes
 
     def nextState(self, state, action):
         """ Metodo que implementa funcao de transicao """
@@ -70,23 +77,36 @@ class SegmentationProblem(util.Problem):
         if action == movEspaco:
             aux = state[-1]
             state = state[:-1] + (aux+1,)
+        return state
 
     def isGoalState(self, state):
         """ Metodo que implementa teste de meta """
         #eh meta se dividiu em palavras que todas estao abaixo de 15
-        copiaQuery = query #copia query para versao destrutivel
+        copiaQuery = self.query #copia query para versao destrutivel
         listaPalavras = [] #lista das palavras apos divisao
         aux = ""           #string auxiliar para guardar cada palavra
         for i in range(len(state)):
             j = i+1
             aux = copiaQuery[state[-j]:]        #aux recebe a ultima palavra
             listaPalavras.append(aux)           #essa palavra eh colocada na lista
-            copiaQuery = copiaQuery[state[-j]:] #essa palavra eh removida do fim da copia
-        
+            copiaQuery = copiaQuery[:state[-j]] #essa palavra eh removida do fim da copia
+        listaPalavras.append(copiaQuery)
+
+        listaCustos = []
         #listaPalavras tem todas as palavras, porem de tras para frente
         #nao invertemos a lista aqui pois a ordem das palavras nao importa nesta etapa
+        i = 0
+        length = len(listaPalavras)
+        while(i<length):
+            if listaPalavras[i] == '':
+                listaPalavras.remove(listaPalavras[i])
+                length = length - 1
+            else:
+                i = i+1
+
         for palavra in listaPalavras:
-            if self.unigramCost(palavra) > 15: #Se qualquer palavra nao estiver no corpus
+            listaCustos.append(self.unigramCost(palavra))
+            if self.unigramCost(palavra) > 10: #Se qualquer palavra nao estiver no corpus
                 return False                   #retorna False
         #Se chegou aqui, nao retornou False
         #Ou seja, todas as palavras estao no corpus e eh estado meta
@@ -94,15 +114,17 @@ class SegmentationProblem(util.Problem):
 
     def stepCost(self, state, action):
         """ Metodo que implementa funcao custo """
+        nxtState = self.nextState(state, action)
         #Separa a query com os espacos do estado
-        copiaQuery = query
+        copiaQuery = self.query
         listaPalavras = []
         aux = ""
-        for i in range(len(state)):
+        for i in range(len(nxtState)):
             j = i+1
-            aux = copiaQuery[state[-j]:]
+            aux = copiaQuery[nxtState[-j]:]
             listaPalavras.append(aux)
-            copiaQuery = copiaQuery[state[-j]:]
+            copiaQuery = copiaQuery[:nxtState[-j]]
+        listaPalavras.append(copiaQuery)
         listaPalavras.reverse()
         #calcula custo de cada palavra e custo total
         custoTotal = 0.0
@@ -118,10 +140,33 @@ def segmentWords(query, unigramCost):
         return ''
      
     # BEGIN_YOUR_CODE 
-    # Voce pode usar a função getSolution para recuperar a sua solução a partir do no meta
+    # Voce pode usar a funo getSolution para recuperar a sua soluo a partir do no meta
     # valid,solution  = util.getSolution(goalNode,problem)
-
-    raise NotImplementedError
+    prob = SegmentationProblem(query, unigramCost)
+    goal = util.uniformCostSearch(prob)
+    listaPalavras = []
+    aux = ""
+    copQuery = query
+    for i in range(len(goal.state)):
+        j = i+1
+        aux = copQuery[goal.state[-j]:]
+        listaPalavras.append(aux)
+        copQuery = copQuery[:goal.state[-j]]
+    listaPalavras.append(copQuery)
+    listaPalavras.reverse()
+    i = 0
+    length = len(listaPalavras)
+    while(i<length):
+        if listaPalavras[i] == '':
+            listaPalavras.remove(listaPalavras[i])
+            length = length - 1
+        else:
+            i = i+1
+    aux = ""
+    for palavra in listaPalavras:
+        aux += palavra
+        aux += " "
+    return aux[:-1]
 
     # END_YOUR_CODE
 
@@ -195,9 +240,11 @@ def main():
     Descomente as linhas que julgar conveniente ou crie seus proprios testes.
     """
     unigramCost, bigramCost, possibleFills  =  getRealCosts()
-    
+    timeinit = time.time()
     resulSegment = segmentWords('believeinyourselfhavefaithinyourabilities', unigramCost)
     print(resulSegment)
+    timeinit = time.time() - timeinit
+    print("tempo = " + str(timeinit))
     
 
     resultInsert = insertVowels('smtms ltr bcms nvr'.split(), bigramCost, possibleFills)
