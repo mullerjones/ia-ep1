@@ -61,11 +61,11 @@ class SegmentationProblem(util.Problem):
         """
         #acoes
         acoes = []
-        if len(state) < len(self.query):
-            acoes.append(addEspaco)
-
         if state[-1] != len(self.query):
             acoes.append(movEspaco)
+
+        if len(state) < len(self.query):
+            acoes.append(addEspaco)
 
         return acoes
 
@@ -181,21 +181,43 @@ class VowelInsertionProblem(util.Problem):
 
     def isState(self, state):
         """ Metodo  que implementa verificacao de estado """
-        raise NotImplementedError
+        for ii in range(len(state)):
+            if state[i] >= len(self.possibleFills(queryWords[i])):
+                return False
+        
+        return True
 
     def initialState(self):
         """ Metodo  que implementa retorno da posicao inicial """
-        raise NotImplementedError
+        aux = ""
+        for i in range(len(self.queryWords)):
+            aux += "0 "
+        return aux[:-1]
 
     def actions(self, state):
         """ Metodo  que implementa retorno da lista de acoes validas
         para um determinado estado
         """
-        raise NotImplementedError
+        #so ha uma acao possivel - mudar qual palavra se esta escolhendo de algum
+        #possibleFills. Portanto, as acoes possiveis sao quais indices podem ser mudados
+        lista = state.split()
+        acoes = []
+        for ii in len(lista):
+            if lista[ii] < len(possibleFills(queryWords[ii])) - 1:
+                acoes.append[ii]
+        
+        return acoes
 
     def nextState(self, state, action):
         """ Metodo que implementa funcao de transicao """
-        raise NotImplementedError
+        aux = state.split()
+        aux[action] += 1
+        nxtState = ""
+        for each in aux:
+            nxtState += each
+            nxtState += " "
+        
+        return nxtState[:-1]
 
     def isGoalState(self, state):
         """ Metodo que implementa teste de meta """
@@ -203,7 +225,21 @@ class VowelInsertionProblem(util.Problem):
 
     def stepCost(self, state, action):
         """ Metodo que implementa funcao custo """
-        raise NotImplementedError
+        nxtState = self.nextState(state, action)
+        lista = nxtState.split()
+        lPalavras = []
+        for ii in range(len(lista)):
+            lPalavras.append(self.possibleFills(queryWords[ii])[nxtState[i]])
+        #aqui, lPalavras tem a lista de palavras correspondentes ao proximo estado
+        #calculando custo
+        custoTotal = 0.0
+        for ii in range(len(lPalavras)):
+            if ii == 0:
+                custoTotal += self.bigramCost('-BEGIN-',lPalavras[0])
+            else:
+                custoTotal += self.bigramCost(lPalavras[ii-1], lPalavras[ii])
+        
+        return custoTotal
 
 
 
@@ -240,11 +276,8 @@ def main():
     Descomente as linhas que julgar conveniente ou crie seus proprios testes.
     """
     unigramCost, bigramCost, possibleFills  =  getRealCosts()
-    timeinit = time.time()
-    resulSegment = segmentWords('believeinyourselfhavefaithinyourabilities', unigramCost)
-    print(resulSegment)
-    timeinit = time.time() - timeinit
-    print("tempo = " + str(timeinit))
+    #resulSegment = segmentWords('believeinyourselfhavefaithinyouandinme', unigramCost)
+    #print(resulSegment)
     
 
     resultInsert = insertVowels('smtms ltr bcms nvr'.split(), bigramCost, possibleFills)
