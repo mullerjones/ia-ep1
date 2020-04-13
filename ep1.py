@@ -30,11 +30,14 @@
 import util
 import time
 
-addEspaco = 20
-movEspaco = 30
+addEspaco = "addEspaco"
+movEspaco = "movEspaco"
 
 ############################################################
 # Part 1: Segmentation problem under a unigram model
+
+#Defini o estado como uma tupla de inteiros positivos maiores do que 1
+#Cada número representa um ponto de inserção de um espaço na string original
 
 class SegmentationProblem(util.Problem):
     def __init__(self, query, unigramCost):
@@ -43,6 +46,8 @@ class SegmentationProblem(util.Problem):
 
     def isState(self, state):
         """ Metodo que implementa verificacao de estado """
+        #apenas verifica se todos os valores do estado estão corretos
+        #nunca é chamada pois o estado é bem construído
         for each in state:
             if each > len(query) or each < 0:
                 return False
@@ -51,15 +56,17 @@ class SegmentationProblem(util.Problem):
 
     def initialState(self):
         """ Metodo que implementa retorno da posicao inicial """
+        #Estado inicial é apenas um espaço no primeiro lugar possivel
         state = (1,)
-        self.state = state
         return state
 
     def actions(self, state):
         """ Metodo que implementa retorno da lista de acoes validas
         para um determinado estado
         """
-        #acoes
+        #As ações possiveis são:
+        #1) adicionar um espaço na tupla (ou seja, aumentar o numero palavras que formarão a string final)
+        #2) mover o ultimo espaço (ou seja, mudar apenas onde as palavras se separam)
         acoes = []
         if state[-1] != len(self.query):
             acoes.append(movEspaco)
@@ -71,9 +78,11 @@ class SegmentationProblem(util.Problem):
 
     def nextState(self, state, action):
         """ Metodo que implementa funcao de transicao """
+        #se a ação é adicionar um espaço, adiciona um no proximo espaço possível depois do ultimo existente
         if action == addEspaco:
             aux = state[-1]
             state = state + (aux+1,)
+        #se a ação é mover o espaço, move o ultimo espaço da tupla uma posição para a frente
         if action == movEspaco:
             aux = state[-1]
             state = state[:-1] + (aux+1,)
@@ -81,20 +90,22 @@ class SegmentationProblem(util.Problem):
 
     def isGoalState(self, state):
         """ Metodo que implementa teste de meta """
-        #eh meta se dividiu em palavras que todas estao abaixo de 15
-        copiaQuery = self.query #copia query para versao destrutivel
-        listaPalavras = [] #lista das palavras apos divisao
-        aux = ""           #string auxiliar para guardar cada palavra
+        #é estado meta se dividiu a string em palavras que todas estao abaixo de 10
+        #em outras palavras, se todas as palavras estão no corpus
+        copiaQuery = self.query #copia query para versão destrutivel
+        listaPalavras = []      #inicializa lista das palavras apos divisao
+        aux = ""                #string auxiliar para guardar cada palavra
         for i in range(len(state)):
             j = i+1
             aux = copiaQuery[state[-j]:]        #aux recebe a ultima palavra
             listaPalavras.append(aux)           #essa palavra eh colocada na lista
             copiaQuery = copiaQuery[:state[-j]] #essa palavra eh removida do fim da copia
-        listaPalavras.append(copiaQuery)
+        listaPalavras.append(copiaQuery)        #adiciona o restante da string (que representa uma palavra)
 
-        listaCustos = []
-        #listaPalavras tem todas as palavras, porem de tras para frente
-        #nao invertemos a lista aqui pois a ordem das palavras nao importa nesta etapa
+        #aqui, listaPalavras contém todas as palavras da string, em ordem inversa
+        #como o modelo é um modelo de unigramas, a ordem das palavras não importa
+        #este próximo trecho remove palavras vazias da lista,
+        # o que ocorre em alguns casos nessa modelagem, especialmente para palavras unicas
         i = 0
         length = len(listaPalavras)
         while(i<length):
@@ -103,19 +114,20 @@ class SegmentationProblem(util.Problem):
                 length = length - 1
             else:
                 i = i+1
-
+        
+        #para cada palavra na lista, checa se seu custo é maior que o limiar estabelecido
         for palavra in listaPalavras:
-            listaCustos.append(self.unigramCost(palavra))
             if self.unigramCost(palavra) > 10: #Se qualquer palavra nao estiver no corpus
-                return False                   #retorna False
+                return False                   #tera custo > 10 e retorna False
         #Se chegou aqui, nao retornou False
         #Ou seja, todas as palavras estao no corpus e eh estado meta
         return True
 
     def stepCost(self, state, action):
         """ Metodo que implementa funcao custo """
+        #obtem próximo estado a partir da ação passada
         nxtState = self.nextState(state, action)
-        #Separa a query com os espacos do estado
+        #Separa a query da mesma forma que o isGoalState usando o pŕoximo estado (nxtState)
         copiaQuery = self.query
         listaPalavras = []
         aux = ""
@@ -125,12 +137,12 @@ class SegmentationProblem(util.Problem):
             listaPalavras.append(aux)
             copiaQuery = copiaQuery[:nxtState[-j]]
         listaPalavras.append(copiaQuery)
-        listaPalavras.reverse()
-        #calcula custo de cada palavra e custo total
+        #calcula custo de cada palavra e soma num total
         custoTotal = 0.0
         for palavra in listaPalavras:
             custoTotal += self.unigramCost(palavra)
         
+        #retorna custo total do próximo estado
         return custoTotal
 
 
@@ -144,6 +156,7 @@ def segmentWords(query, unigramCost):
     # valid,solution  = util.getSolution(goalNode,problem)
     prob = SegmentationProblem(query, unigramCost)
     goal = util.uniformCostSearch(prob)
+    #separa as palavras como o isGoalState usando o estado meta
     listaPalavras = []
     aux = ""
     copQuery = query
@@ -153,7 +166,9 @@ def segmentWords(query, unigramCost):
         listaPalavras.append(aux)
         copQuery = copQuery[:goal.state[-j]]
     listaPalavras.append(copQuery)
+    #Como a lista contem as palavras em ordem reversa, a inverte para montar a string de saida
     listaPalavras.reverse()
+    #novamente, remove os espacos vazios
     i = 0
     length = len(listaPalavras)
     while(i<length):
@@ -163,24 +178,57 @@ def segmentWords(query, unigramCost):
         else:
             i = i+1
     aux = ""
+    #adiciona na saida cada palavra e um espaço
     for palavra in listaPalavras:
         aux += palavra
         aux += " "
-    return aux[:-1]
+    return aux[:-1] #retorna string de saida sem o espaço final desnecessário
 
     # END_YOUR_CODE
 
 ############################################################
 # Part 2: Vowel insertion problem under a bigram cost
 
+#Modelei este problema a partir do possibleFills
+#Cada conjunto de consoantes da entrada tem uma lista correspondente de possiveis palavras que pode formar
+#Desta forma, modelei o estado como uma combinação de alguma palavra dos possibleFills de cada bloco da entrada
+#Entretando, o possibleFills retorna um set, que não é ordenado
+#Portanto, foi necessário criar uma classe de apoio que contenha os possibleFills em uma lista,
+#de modo que cada palavra tenha um indice que possa ser referenciado
+
 class VowelInsertionProblem(util.Problem):
+
+    #Classe auxiliar criada para este fim
+    class listaFills:
+        def __init__(self, queryWords, possibleFills):
+            #classe precisa da lista de palavras, da funcao possiblefills e a lista que sera montada
+            self.queryWords = queryWords
+            self.possibleFills = possibleFills
+            self.lFills = []
+        
+        #unica funcao dessa classe é criar o lFills a partir da entrada
+        def create(self):
+            for word in self.queryWords:
+                aux = self.possibleFills(word) #obtem o set
+                auxL = []                      #cria uma lista auxiliar
+                for each in aux:               #para cada item do set, o adiciona na lista
+                    auxL.append(each)          
+                self.lFills.append(auxL)       #adiciona a lista criada no lFills
+            return self.lFills                 #retorna a lista de listas
+
     def __init__(self, queryWords, bigramCost, possibleFills):
         self.queryWords = queryWords
         self.bigramCost = bigramCost
         self.possibleFills = possibleFills
+        #lFills mantera no proprio objeto do problema a lista de listas do possibleFills
+        self.lFills = self.listaFills(queryWords, possibleFills)
+        self.lFills = self.lFills.create()
 
     def isState(self, state):
         """ Metodo  que implementa verificacao de estado """
+        #confere apenas se nenhum dos indices do estado é maior
+        #que o numero de palavras possiveis do possibleFills
+        #também não é chamada e não é necessária dado que os estados são bem construídos
         for ii in range(len(state)):
             if state[i] >= len(self.possibleFills(queryWords[i])):
                 return False
@@ -189,6 +237,9 @@ class VowelInsertionProblem(util.Problem):
 
     def initialState(self):
         """ Metodo  que implementa retorno da posicao inicial """
+        #estado inicial tem todos os indices como 0
+        #Aqui, usamos uma string ao inves de uma tupla para facilitar a interação com
+        #indices em qualquer posição, o que não é possivel com uma tupla
         aux = ""
         for i in range(len(self.queryWords)):
             aux += "0 "
@@ -202,16 +253,18 @@ class VowelInsertionProblem(util.Problem):
         #possibleFills. Portanto, as acoes possiveis sao quais indices podem ser mudados
         lista = state.split()
         acoes = []
-        for ii in len(lista):
-            if lista[ii] < len(possibleFills(queryWords[ii])) - 1:
-                acoes.append[ii]
+        for ii in range(len(lista)):
+            if int(lista[ii]) < len(self.lFills[ii]) - 1: #se determinado indice ja esta no maximo, ele nao pode mudar
+                acoes.append(ii) #adiciona o indice de qual palavra pode mudar na lista de acoes
         
         return acoes
 
     def nextState(self, state, action):
         """ Metodo que implementa funcao de transicao """
-        aux = state.split()
-        aux[action] += 1
+        #proximo estado é adicionar 1 no número de indice passado no action
+        aux = state.split() #desmonta string
+        aux[action] = str(int(aux[action]) + 1) #adiciona 1 no lugar indicado
+        #remonta a string
         nxtState = ""
         for each in aux:
             nxtState += each
@@ -221,17 +274,40 @@ class VowelInsertionProblem(util.Problem):
 
     def isGoalState(self, state):
         """ Metodo que implementa teste de meta """
-        raise NotImplementedError
-
+        #confere se todos os bigramas tem custo menos que 13, limiar escolhido para boas formacoes
+        lista = state.split()
+        lPalavras = []
+        #monta lista de palavras a partir do estado e de lFills
+        for ii in range(len(lista)):
+            listaDessa = self.lFills[ii]
+            index = int(lista[ii])
+            if len(listaDessa) == 0:
+                lPalavras.append(self.queryWords[ii])
+            else:
+                lPalavras.append(listaDessa[index])
+        
+        #checa custo de cada bigrama
+        custo = 0.0
+        for ii in range(len(lPalavras)):
+            if ii == 0:
+                custo = self.bigramCost('-BEGIN-',lPalavras[0])
+            else:
+                custo = self.bigramCost(lPalavras[ii-1], lPalavras[ii])
+            
+            if custo > 13:
+                return False
+        
+        return True
+        
     def stepCost(self, state, action):
         """ Metodo que implementa funcao custo """
         nxtState = self.nextState(state, action)
         lista = nxtState.split()
         lPalavras = []
         for ii in range(len(lista)):
-            lPalavras.append(self.possibleFills(queryWords[ii])[nxtState[i]])
+            lPalavras.append(self.lFills[ii][int(lista[ii])])
         #aqui, lPalavras tem a lista de palavras correspondentes ao proximo estado
-        #calculando custo
+        #calculando custo total do proximo estado
         custoTotal = 0.0
         for ii in range(len(lPalavras)):
             if ii == 0:
@@ -240,6 +316,17 @@ class VowelInsertionProblem(util.Problem):
                 custoTotal += self.bigramCost(lPalavras[ii-1], lPalavras[ii])
         
         return custoTotal
+    
+    #funcao extra que rotorna string de saida a partir de um determinado estado
+    def devolveString(self, state):
+        out = ""
+        lista = state.split()
+        lPalavras = []
+        for ii in range(len(lista)):
+            index = int(lista[ii])
+            lPalavras.append(self.lFills[ii][index])
+        out = ' '.join(lPalavras)
+        return out
 
 
 
@@ -247,7 +334,13 @@ def insertVowels(queryWords, bigramCost, possibleFills):
     # BEGIN_YOUR_CODE 
     # Voce pode usar a função getSolution para recuperar a sua solução a partir do no meta
     # valid,solution  = util.getSolution(goalNode,problem)
-    raise NotImplementedError
+    prob = VowelInsertionProblem(queryWords, bigramCost, possibleFills)
+    goal = util.uniformCostSearch(prob)
+    if goal == None:
+        saida = ' '.join(queryWords)
+    else:
+        saida = prob.devolveString(goal.state)
+    return saida
     # END_YOUR_CODE
 
 ############################################################
@@ -276,11 +369,11 @@ def main():
     Descomente as linhas que julgar conveniente ou crie seus proprios testes.
     """
     unigramCost, bigramCost, possibleFills  =  getRealCosts()
-    #resulSegment = segmentWords('believeinyourselfhavefaithinyouandinme', unigramCost)
-    #print(resulSegment)
-    
 
-    resultInsert = insertVowels('smtms ltr bcms nvr'.split(), bigramCost, possibleFills)
+    resulSegment = segmentWords('believeinyourselfhavefaith', unigramCost)
+    print(resulSegment)
+
+    resultInsert = insertVowels('wld lk t hv mr lttrs'.split(), bigramCost, possibleFills)
     print(resultInsert)
 
 if __name__ == '__main__':
